@@ -22,4 +22,8 @@ contract BurnFee is AccessControlUpgradeable {
         burnFeeRate = newRate;
         emit BurnFeeRateUpdated(newRate);
     }
+
+    function getBurnFeeRate() public view returns (uint256) {
+        return burnFeeRate;
+    }
 }

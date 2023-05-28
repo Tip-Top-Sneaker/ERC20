@@ -54,16 +54,26 @@ contract MyToken is ERC20Upgradeable, AccessControlUpgradeable, Blacklist, RateL
 
     // The _beforeTokenTransfer function is an internal function that is called before any transfer of tokens. It checks the blacklist, rate limiter, and maximum transfer amount.
     function _beforeTokenTransfer(address from, address to, uint256 amount) internal override(ERC20Upgradeable) {
-         require(!Blacklist.isBlacklisted(from) && !Blacklist.isBlacklisted(to), "Blacklisted address");
+        require(!Blacklist.isBlacklisted(from) && !Blacklist.isBlacklisted(to), "Blacklisted address");
         super._beforeTokenTransfer(from, to, amount);
+
+        // Check if the amount is less than or equal to the maxTransferAmount from MaxTransfer.sol
+        require(amount <= MaxTransfer.getMaxTransferAmount(), "Transfer amount exceeds the maxTransferAmount");
+
+        // Check if the time since the last transfer is greater than or equal to the minTimeBetweenTransfers from RateLimiter.sol
+        require(block.timestamp - RateLimiter.getLastTransferTimestamp(from) >= RateLimiter.getMinTimeBetweenTransfers(), "Transfer not allowed yet, minTimeBetweenTransfers not passed");
+    
+        // Update the last transfer timestamp for the sender in RateLimiter.sol
+        RateLimiter.setLastTransferTimestamp(from, block.timestamp);
     }
 
     // The _afterTokenTransfer function is called after a successful token transfer. It updates the last transfer timestamp for the sender.
     function _afterTokenTransfer(address from, address to, uint256 amount) internal override (ERC20Upgradeable){
-    RateLimiter._afterTokenTransfer(from, to, amount);
-    if (from != address(0) && to != address(0)) { // Not a minting or burning operation
-        uint256 burnAmount = amount * BurnFee.getBurnFeeRate() / 100;
-         _transfer(from, feeCollector, burnAmount);
-    }
+        if (from != address(0) && to != address(0)) { // Not a minting or burning operation
+            uint256 burnAmount = amount * BurnFee.getBurnFeeRate() / 100;
+            _transfer(from, feeCollector, burnAmount);
+        }
+        // Update the last transfer timestamp in the RateLimiter contract
+        RateLimiter.setLastTransferTimestamp(from, block.timestamp);
     }
 }

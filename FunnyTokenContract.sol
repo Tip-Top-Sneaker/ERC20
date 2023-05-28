@@ -16,14 +16,14 @@ contract MyToken is ERC20Upgradeable, AccessControlUpgradeable, Blacklist, RateL
     address public feeCollector;
 
     // Replace the constructor with an initializer function.
-    function initialize(address _feeCollector)  public override(Blacklist, RateLimiter, BurnFee) initializer {
+    function initialize()  public  initializer {
         __ERC20_init("Funny Token", "FUC");
         __AccessControl_init();
 
         uint256 initialSupply = 1000000000 * (10 ** uint256(decimals())); // 1 billion tokens
         _mint(msg.sender, initialSupply);
         _setupRole(MINTER_ROLE, msg.sender);
-        feeCollector = _feeCollector;
+        
 
         // Initialize the other contracts with their default values
         Blacklist.initialize();
@@ -34,6 +34,11 @@ contract MyToken is ERC20Upgradeable, AccessControlUpgradeable, Blacklist, RateL
         RateLimiter.setMinTimeBetweenTransfers(30 minutes); // 30 mins transaction interval
         MaxTransfer.setMaxTransferAmount(50000 * (10 ** uint256(decimals()))); // Max 50K FUC token per trade
         BurnFee.setBurnFeeRate(10); // Set burn fee to 10%
+    }
+
+    // New function to set the feeCollector address
+    function setFeeCollector(address _feeCollector) public onlyRole(DEFAULT_ADMIN_ROLE) {
+        feeCollector = _feeCollector;
     }
 
     // The mint function allows an account with the minter role to create new tokens and add them to the supply.
@@ -47,12 +52,13 @@ contract MyToken is ERC20Upgradeable, AccessControlUpgradeable, Blacklist, RateL
     }
 
     // The _beforeTokenTransfer function is an internal function that is called before any transfer of tokens. It checks the blacklist, rate limiter, and maximum transfer amount.
-    function _beforeTokenTransfer(address from, address to, uint256 amount) internal override(ERC20Upgradeable, Blacklist, RateLimiter, MaxTransfer) {
+    function _beforeTokenTransfer(address from, address to, uint256 amount) internal override(ERC20Upgradeable) {
+         require(!Blacklist.isBlacklisted(from) && !Blacklist.isBlacklisted(to), "Blacklisted address");
         super._beforeTokenTransfer(from, to, amount);
     }
 
     // The _afterTokenTransfer function is called after a successful token transfer. It updates the last transfer timestamp for the sender.
-    function _afterTokenTransfer(address from, address to, uint256 amount) internal override (ERC20, Blacklist, RateLimiter, MaxTransfer){
+    function _afterTokenTransfer(address from, address to, uint256 amount) internal override (ERC20Upgradeable){
     RateLimiter._afterTokenTransfer(from, to, amount);
     if (from != address(0) && to != address(0)) { // Not a minting or burning operation
         uint256 burnAmount = amount * BurnFee.getBurnFeeRate() / 100;

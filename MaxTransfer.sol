@@ -22,11 +22,9 @@ contract MaxTransfer is Initializable, AccessControlUpgradeable {
         emit MaxTransferAmountUpdated(newMaxAmount);
     }
 
-    function _beforeTokenTransfer(address from, address to, uint256 amount) internal virtual {
-        require(amount <= maxTransferAmount, "Transfer amount exceeds the max allowed");
+    function getMaxTransferAmount() public view returns (uint256) {
+        return maxTransferAmount;
     }
 
-    function _afterTokenTransfer(address from, address to, uint256 amount) internal virtual {
-        // Add any logic to be executed after the token transfer
-    }
+
 }

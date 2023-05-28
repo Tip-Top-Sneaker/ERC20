@@ -22,8 +22,7 @@ contract RateLimiter is Initializable, AccessControlUpgradeable {
     // In the initializer, set up the rate manager role and initial minimum time between transfers.
     function initialize() public virtual initializer {
         __AccessControl_init();
-        _setupRole(RATE_MGR, msg.sender);
-        minTimeBetweenTransfers = 30 minutes; // Set default minimum time between transfers to 30 minutes
+        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
     // The setMinTimeBetweenTransfers function allows an account with the rate manager role to update the minimum time between transfers.
@@ -32,13 +31,18 @@ contract RateLimiter is Initializable, AccessControlUpgradeable {
         emit MinTimeBetweenTransfersUpdated(newMinTime);
     }
 
-    // The _beforeTokenTransfer function is an internal function that is called before any transfer of tokens. It checks if the minimum time between transfers has passed.
-    function _beforeTokenTransfer(address from, address to, uint256 amount) internal virtual {
-        require(block.timestamp - _lastTransferTimestamp[from] >= minTimeBetweenTransfers, "Transfer frequency exceeded");
+    function getMinTimeBetweenTransfers() public view returns (uint256) {
+        return minTimeBetweenTransfers;
     }
 
-    // The _afterTokenTransfer function is called after a successful token transfer. It updates the last transfer timestamp for the sender.
-    function _afterTokenTransfer(address from, address to, uint256 amount) internal virtual{
-        _lastTransferTimestamp[from] = block.timestamp;
+
+    function setLastTransferTimestamp(address account, uint256 timestamp) public onlyRole(DEFAULT_ADMIN_ROLE) {
+        _lastTransferTimestamp[account] = timestamp;
     }
-}
+    function getLastTransferTimestamp(address account) public view returns (uint256) {
+        return _lastTransferTimestamp[account];
+    }
+
+}    
+   
+

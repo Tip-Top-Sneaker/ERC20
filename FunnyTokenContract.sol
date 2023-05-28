@@ -26,7 +26,7 @@ contract MyToken is ERC20Upgradeable, AccessControlUpgradeable, Blacklist, RateL
         
 
         // Initialize the other contracts with their default values
-        Blacklist.initialize();
+        //Blacklist.initialize();
         RateLimiter.initialize();
         MaxTransfer.initialize(decimals());
         BurnFee.initialize();

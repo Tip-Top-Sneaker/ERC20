@@ -16,10 +16,7 @@ contract Blacklist is AccessControlUpgradeable {
         _setupRole(LIST_MGR, msg.sender);
     }
 
- function initialize() public virtual initializer {
-        __AccessControl_init();
-        _setupRole(LIST_MGR, msg.sender);
-    }
+
 
     function blacklist(address account) public onlyRole(LIST_MGR) {
         _blacklist[account] = true;

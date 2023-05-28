@@ -41,11 +41,8 @@ contract Blacklist is AccessControlUpgradeable {
         emit ListMgrRoleRevoked(account);
     }
 
-    function _beforeTokenTransfer(address from, address to, uint256 amount) internal virtual {
-        require(!_blacklist[from] && !_blacklist[to], "Blacklisted address");
-    }
-
-    function _afterTokenTransfer(address from, address to, uint256 amount) internal virtual {
-        // Add any logic to be executed after the token transfer
+    // The isBlacklisted function allows to check if an address is blacklisted.
+    function isBlacklisted(address account) public view returns (bool) {
+        return _blacklist[account];
     }
 }

@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
+// Lp_Manager.sol
+// Provide full range liquidity for FUC/WETH 
 pragma solidity =0.7.6;
 pragma abicoder v2;
 
@@ -13,8 +15,9 @@ contract LiquidityExamples is IERC721Receiver {
     // 
     address public constant POOL_ADDRESS = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
 
-    address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
-    address public constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+
+    address public constant FUC = 0x1F52145666C862eD3E2f1Da213d479E61b2892af;
+    address public constant WETH = 0x82aF49447D8a07e3bd95BD0d56f35241523fBab1;
 
     uint24 public constant poolFee = 3000;
 
@@ -65,7 +68,7 @@ contract LiquidityExamples is IERC721Receiver {
     }
 
     /// @notice Calls the mint function defined in periphery, mints the same amount of each token.
-    /// For this example we are providing 1000 DAI and 1000 USDC in liquidity
+    /// For this example we are providing 1000 FUC and 1000 WETH in liquidity
     /// @return tokenId The id of the newly minted ERC721
     /// @return liquidity The amount of liquidity for the position
     /// @return amount0 The amount of token0
@@ -79,22 +82,22 @@ contract LiquidityExamples is IERC721Receiver {
             uint256 amount1
         )
     {
-        // Before minting, check if the user has enough DAI and USDC
-    require(IERC20(DAI).balanceOf(msg.sender) >= amount0ToMint, "Not enough DAI in account");
-    require(IERC20(USDC).balanceOf(msg.sender) >= amount1ToMint, "Not enough USDC in account");
+        // Before minting, check if the user has enough FUC and WETH
+    require(IERC20(FUC).balanceOf(msg.sender) >= amount0ToMint, "Not enough FUC in account");
+    require(IERC20(WETH).balanceOf(msg.sender) >= amount1ToMint, "Not enough WETH in account");
 
         // transfer tokens to contract
-        TransferHelper.safeTransferFrom(DAI, msg.sender, address(this), amount0ToMint);
-        TransferHelper.safeTransferFrom(USDC, msg.sender, address(this), amount1ToMint);
+        TransferHelper.safeTransferFrom(FUC, msg.sender, address(this), amount0ToMint);
+        TransferHelper.safeTransferFrom(WETH, msg.sender, address(this), amount1ToMint);
 
         // Approve the position manager
-        TransferHelper.safeApprove(DAI, address(nonfungiblePositionManager), amount0ToMint);
-        TransferHelper.safeApprove(USDC, address(nonfungiblePositionManager), amount1ToMint);
+        TransferHelper.safeApprove(FUC, address(nonfungiblePositionManager), amount0ToMint);
+        TransferHelper.safeApprove(WETH, address(nonfungiblePositionManager), amount1ToMint);
 
         INonfungiblePositionManager.MintParams memory params =
             INonfungiblePositionManager.MintParams({
-                token0: DAI,
-                token1: USDC,
+                token0: FUC,
+                token1: WETH,
                 fee: poolFee,
                 tickLower: TickMath.MIN_TICK,
                 tickUpper: TickMath.MAX_TICK,
@@ -108,26 +111,26 @@ contract LiquidityExamples is IERC721Receiver {
 
    
 
-        // Note that the pool defined by DAI/USDC and fee tier 0.3% must already be created and initialized in order to mint
+        // Note that the pool defined by FUC/WETH and fee tier 0.3% must already be created and initialized in order to mint
         (tokenId, liquidity, amount0, amount1) = nonfungiblePositionManager.mint(params);
 
         // Emit the new event
-         emit NewPositionMinted(msg.sender, tokenId, to, DAI, USDC, amount0, amount1);
+         emit NewPositionMinted(msg.sender, tokenId, to, FUC, WETH, amount0, amount1);
         
         // Create a deposit
         _createDeposit(to, tokenId);
 
         // Remove allowance and refund in both assets.
         if (amount0 < amount0ToMint) {
-            TransferHelper.safeApprove(DAI, address(nonfungiblePositionManager), 0);
+            TransferHelper.safeApprove(FUC, address(nonfungiblePositionManager), 0);
             uint256 refund0 = amount0ToMint - amount0;
-            TransferHelper.safeTransfer(DAI, msg.sender, refund0);
+            TransferHelper.safeTransfer(FUC, msg.sender, refund0);
         }
 
         if (amount1 < amount1ToMint) {
-            TransferHelper.safeApprove(USDC, address(nonfungiblePositionManager), 0);
+            TransferHelper.safeApprove(WETH, address(nonfungiblePositionManager), 0);
             uint256 refund1 = amount1ToMint - amount1;
-            TransferHelper.safeTransfer(USDC, msg.sender, refund1);
+            TransferHelper.safeTransfer(WETH, msg.sender, refund1);
         }
     }
 

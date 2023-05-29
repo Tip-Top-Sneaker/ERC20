@@ -11,7 +11,7 @@ import '@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.s
 import '@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol';
 import '@uniswap/v3-periphery/contracts/base/LiquidityManagement.sol';
 
-contract LiquidityExamples is IERC721Receiver {
+contract PositionManager is IERC721Receiver {
     // 
     address public constant POOL_ADDRESS = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
 

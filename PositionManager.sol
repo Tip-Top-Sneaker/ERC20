@@ -1,15 +1,61 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 // Lp_Manager.sol
 // Provide full range liquidity for FUC/WETH 
-pragma solidity =0.7.6;
+pragma solidity ^0.7.6;
 pragma abicoder v2;
 
-import '@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol';
-import '@uniswap/v3-core/contracts/libraries/TickMath.sol';
-import '@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol';
+//import '@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol';
+//import '@uniswap/v3-core/contracts/libraries/TickMath.sol';
+//import '@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol';
 import '@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol';
-import '@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol';
-import '@uniswap/v3-periphery/contracts/base/LiquidityManagement.sol';
+//import '@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol';
+ 
+interface IERC721Receiver {
+    /**
+     * @dev Whenever an {IERC721} `tokenId` token is transferred to this contract via {IERC721-safeTransferFrom}
+     * by `operator` from `from`, this function is called.
+     *
+     * It must return its Solidity selector to confirm the token transfer.
+     * If any other value is returned or the interface is not implemented by the recipient, the transfer will be reverted.
+     *
+     * The selector can be obtained in Solidity with `IERC721Receiver.onERC721Received.selector`.
+     */
+    function onERC721Received(
+        address operator,
+        address from,
+        uint256 tokenId,
+        bytes calldata data
+    ) external returns (bytes4);
+}
+interface IERC20 {
+   
+    event Transfer(address indexed from, address indexed to, uint256 value);
+
+  
+    event Approval(address indexed owner, address indexed spender, uint256 value);
+
+  
+    function totalSupply() external view returns (uint256);
+
+ 
+    function balanceOf(address account) external view returns (uint256);
+
+  
+    function transfer(address to, uint256 amount) external returns (bool);
+
+  
+    function allowance(address owner, address spender) external view returns (uint256);
+
+ 
+    function approve(address spender, uint256 amount) external returns (bool);
+
+ 
+    function transferFrom(
+        address from,
+        address to,
+        uint256 amount
+    ) external returns (bool);
+}
 
 contract PositionManager is IERC721Receiver {
     // 
@@ -19,7 +65,7 @@ contract PositionManager is IERC721Receiver {
     address public constant FUC = 0x1F52145666C862eD3E2f1Da213d479E61b2892af;
     address public constant WETH = 0x82aF49447D8a07e3bd95BD0d56f35241523fBab1;
 
-    uint24 public constant poolFee = 3000;
+    uint24 public constant poolFee = 10000;
 
     INonfungiblePositionManager public immutable nonfungiblePositionManager;
 
@@ -43,6 +89,40 @@ contract PositionManager is IERC721Receiver {
     ) {
         nonfungiblePositionManager = _nonfungiblePositionManager;
     }
+    function safeTransfer(
+        address token,
+        address to,
+        uint256 value
+    ) internal {
+        (bool success, bytes memory data) = token.call(abi.encodeWithSelector(IERC20.transfer.selector, to, value));
+        require(success && (data.length == 0 || abi.decode(data, (bool))), 'ST');
+    }
+
+    /// @notice Approves the stipulated contract to spend the given allowance in the given token
+    /// @dev Errors with 'SA' if transfer fails
+    /// @param token The contract address of the token to be approved
+    /// @param to The target of the approval
+    /// @param value The amount of the given token the target will be allowed to spend
+    function safeApprove(
+        address token,
+        address to,
+        uint256 value
+    ) internal {
+        (bool success, bytes memory data) = token.call(abi.encodeWithSelector(IERC20.approve.selector, to, value));
+        require(success && (data.length == 0 || abi.decode(data, (bool))), 'SA');
+    }
+
+     function safeTransferFrom(
+        address token,
+        address from,
+        address to,
+        uint256 value
+    ) internal {
+        (bool success, bytes memory data) =
+            token.call(abi.encodeWithSelector(IERC20.transferFrom.selector, from, to, value));
+        require(success && (data.length == 0 || abi.decode(data, (bool))), 'STF');
+    }
+
 
     // Implementing `onERC721Received` so this contract can receive custody of erc721 tokens
     function onERC721Received(
@@ -87,20 +167,20 @@ contract PositionManager is IERC721Receiver {
     require(IERC20(WETH).balanceOf(msg.sender) >= amount1ToMint, "Not enough WETH in account");
 
         // transfer tokens to contract
-        TransferHelper.safeTransferFrom(FUC, msg.sender, address(this), amount0ToMint);
-        TransferHelper.safeTransferFrom(WETH, msg.sender, address(this), amount1ToMint);
+        safeTransferFrom(FUC, msg.sender, address(this), amount0ToMint);
+        safeTransferFrom(WETH, msg.sender, address(this), amount1ToMint);
 
         // Approve the position manager
-        TransferHelper.safeApprove(FUC, address(nonfungiblePositionManager), amount0ToMint);
-        TransferHelper.safeApprove(WETH, address(nonfungiblePositionManager), amount1ToMint);
+        safeApprove(FUC, address(nonfungiblePositionManager), amount0ToMint);
+        safeApprove(WETH, address(nonfungiblePositionManager), amount1ToMint);
 
         INonfungiblePositionManager.MintParams memory params =
             INonfungiblePositionManager.MintParams({
                 token0: FUC,
                 token1: WETH,
                 fee: poolFee,
-                tickLower: TickMath.MIN_TICK,
-                tickUpper: TickMath.MAX_TICK,
+                tickLower: -887272,
+                tickUpper: 887272,
                 amount0Desired: amount0ToMint,
                 amount1Desired: amount1ToMint,
                 amount0Min: 0,
@@ -122,15 +202,15 @@ contract PositionManager is IERC721Receiver {
 
         // Remove allowance and refund in both assets.
         if (amount0 < amount0ToMint) {
-            TransferHelper.safeApprove(FUC, address(nonfungiblePositionManager), 0);
+            safeApprove(FUC, address(nonfungiblePositionManager), 0);
             uint256 refund0 = amount0ToMint - amount0;
-            TransferHelper.safeTransfer(FUC, msg.sender, refund0);
+            safeTransfer(FUC, msg.sender, refund0);
         }
 
         if (amount1 < amount1ToMint) {
-            TransferHelper.safeApprove(WETH, address(nonfungiblePositionManager), 0);
+            safeApprove(WETH, address(nonfungiblePositionManager), 0);
             uint256 refund1 = amount1ToMint - amount1;
-            TransferHelper.safeTransfer(WETH, msg.sender, refund1);
+            safeTransfer(WETH, msg.sender, refund1);
         }
     }
 
@@ -155,8 +235,8 @@ contract PositionManager is IERC721Receiver {
         address token0 = deposits[tokenId].token0;
         address token1 = deposits[tokenId].token1;
         // send collected fees to owner
-        TransferHelper.safeTransfer(token0, owner, amount0);
-        TransferHelper.safeTransfer(token1, owner, amount1);
+        safeTransfer(token0, owner, amount0);
+        safeTransfer(token1, owner, amount1);
     }
 
     /// @notice Transfers the NFT to the owner
